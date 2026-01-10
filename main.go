@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync/atomic"
 
+	"github.com/AugustoMagro/gowebserver/internal/chirpyapi"
 	"github.com/AugustoMagro/gowebserver/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -36,20 +37,20 @@ func main() {
 		log.Printf("Connection to Database failed: %s", err)
 	}
 
-	apiCfg := apiConfig{
-		fileserverHits: atomic.Int32{},
-		db:             dbQueries,
-		platform:       plat,
-	}
+	apiCfg := chirpyapi.NewClient(dbQueries, plat)
 
 	serverMux := http.NewServeMux()
-	serverMux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
-	serverMux.HandleFunc("GET /api/healthz/", handlerReadiness)
-	serverMux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
-	serverMux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
-	serverMux.HandleFunc("POST /api/validate_chirp", validateChirp)
-	serverMux.HandleFunc("POST /api/users", apiCfg.handleUser)
-	serverMux.HandleFunc("GET /api/allusers", apiCfg.getUsers)
+	serverMux.Handle("/app/", apiCfg.MiddlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
+	serverMux.HandleFunc("GET /api/healthz/", chirpyapi.HandlerReadiness)
+	serverMux.HandleFunc("GET /admin/metrics", apiCfg.HandlerMetrics)
+	serverMux.HandleFunc("POST /admin/reset", apiCfg.HandlerReset)
+	serverMux.HandleFunc("POST /api/validate_chirp", chirpyapi.ValidateChirp)
+	serverMux.HandleFunc("POST /api/users", apiCfg.HandleUser)
+	serverMux.HandleFunc("GET /api/users", apiCfg.GetUsers)
+	serverMux.HandleFunc("POST /api/login", apiCfg.HandleUserLogin)
+	serverMux.HandleFunc("POST /api/chirps", apiCfg.CreateChirpy)
+	serverMux.HandleFunc("GET /api/chirps", apiCfg.GetChirps)
+	serverMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.GetChirpsByID)
 
 	srv := http.Server{
 		Addr:    ":" + port,
@@ -60,7 +61,7 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-type apiConfig struct {
+type ApiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string

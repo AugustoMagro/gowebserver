@@ -1,9 +1,16 @@
--- name: CreateUser :one
-INSERT INTO users (id, created_at, updated_at, email)
+-- name: CreateChirpy :one
+INSERT INTO chirpy (id, created_at, updated_at, body, user_id)
 VALUES (
     gen_random_uuid(),
     NOW(),
     NOW(),
-    $1
+    $1,
+    $2
 )
 RETURNING *;
+
+-- name: GetChirps :many
+SELECT * FROM chirpy;
+
+-- name: GetChirpsID :one
+SELECT * FROM chirpy WHERE id=$1;
