@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sync/atomic"
 
 	"github.com/AugustoMagro/gowebserver/internal/chirpyapi"
 	"github.com/AugustoMagro/gowebserver/internal/database"
@@ -37,7 +36,7 @@ func main() {
 		log.Printf("Connection to Database failed: %s", err)
 	}
 
-	apiCfg := chirpyapi.NewClient(dbQueries, plat)
+	apiCfg := chirpyapi.NewClient(dbQueries, plat, os.Getenv("SECRET_KEY"))
 
 	serverMux := http.NewServeMux()
 	serverMux.Handle("/app/", apiCfg.MiddlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
@@ -59,10 +58,4 @@ func main() {
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	log.Fatal(srv.ListenAndServe())
-}
-
-type ApiConfig struct {
-	fileserverHits atomic.Int32
-	db             *database.Queries
-	platform       string
 }

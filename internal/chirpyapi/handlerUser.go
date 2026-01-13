@@ -75,12 +75,15 @@ func (cfg *ApiConfig) GetUsers(w http.ResponseWriter, r *http.Request) {
 func (cfg *ApiConfig) HandleUserLogin(w http.ResponseWriter, r *http.Request) {
 
 	type parameters struct {
-		Email    string `json:"email"`
-		Passwrod string `json:"password"`
+		Email              string `json:"email"`
+		Passwrod           string `json:"password"`
+		Expires_in_seconds int    `json:"expires_in_seconds"`
 	}
 
 	type response struct {
-		User User
+		User
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 
 	defer r.Body.Close()
@@ -105,11 +108,26 @@ func (cfg *ApiConfig) HandleUserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if valid {
-		RespondWithJSON(w, http.StatusOK, User{
+
+		expires_time := time.Hour
+
+		if params.Expires_in_seconds > 0 && params.Expires_in_seconds < 3600 {
+			expires_time = time.Duration(params.Expires_in_seconds) * time.Second
+		}
+
+		token, err := auth.MakeJWT(user.ID, cfg.secret_key, expires_time)
+		if err != nil {
+			RespondWithError(w, http.StatusInternalServerError, "Couldn´t create token", err)
+			return
+		}
+
+		RespondWithJSON(w, http.StatusOK, response{User: User{
 			ID:         user.ID,
 			Created_at: user.CreatedAt,
 			Updated_at: user.UpdatedAt,
 			Email:      user.Email,
+		},
+			Token: token,
 		})
 	} else {
 		RespondWithError(w, 401, "401 Unauthorized", nil)

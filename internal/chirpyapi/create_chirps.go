@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/AugustoMagro/gowebserver/internal/auth"
 	"github.com/AugustoMagro/gowebserver/internal/database"
 	"github.com/google/uuid"
 )
@@ -57,9 +58,21 @@ func (cfg *ApiConfig) GetChirpsByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ApiConfig) CreateChirpy(w http.ResponseWriter, r *http.Request) {
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "Couldn´t get token", err)
+		return
+	}
+
+	user_id_token, err := auth.ValidateJWT(token, cfg.secret_key)
+	if err != nil {
+		RespondWithError(w, 401, "401 Unauthorized", err)
+		return
+	}
+
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserId uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	type response struct {
@@ -75,7 +88,7 @@ func (cfg *ApiConfig) CreateChirpy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chirpy, err := cfg.db.CreateChirpy(r.Context(), database.CreateChirpyParams{Body: params.Body, UserID: params.UserId})
+	chirpy, err := cfg.db.CreateChirpy(r.Context(), database.CreateChirpyParams{Body: params.Body, UserID: user_id_token})
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, "Couldn't create chirpy", err)
 		return
