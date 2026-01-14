@@ -75,9 +75,8 @@ func (cfg *ApiConfig) GetUsers(w http.ResponseWriter, r *http.Request) {
 func (cfg *ApiConfig) HandleUserLogin(w http.ResponseWriter, r *http.Request) {
 
 	type parameters struct {
-		Email              string `json:"email"`
-		Passwrod           string `json:"password"`
-		Expires_in_seconds int    `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Passwrod string `json:"password"`
 	}
 
 	type response struct {
@@ -111,14 +110,28 @@ func (cfg *ApiConfig) HandleUserLogin(w http.ResponseWriter, r *http.Request) {
 
 		expires_time := time.Hour
 
-		if params.Expires_in_seconds > 0 && params.Expires_in_seconds < 3600 {
-			expires_time = time.Duration(params.Expires_in_seconds) * time.Second
-		}
-
 		token, err := auth.MakeJWT(user.ID, cfg.secret_key, expires_time)
 		if err != nil {
 			RespondWithError(w, http.StatusInternalServerError, "Couldn´t create token", err)
 			return
+		}
+
+		refreshToken, err := auth.MakeRefreshToken()
+		if err != nil {
+			RespondWithError(w, http.StatusInternalServerError, "Couldn´t create refresh token", err)
+			return
+		}
+
+		expiresTimeJWT := time.Now().Add(60)
+
+		createdRefreshToken, err := cfg.db.CreateRefreshToken(r.Context(),
+			database.CreateRefreshTokenParams{
+				Token:     refreshToken,
+				UserID:    user.ID,
+				ExpiresAt: expiresTimeJWT,
+			})
+		if err != nil {
+			RespondWithError(w, http.StatusInternalServerError, "Couldn´t save refreshToken", err)
 		}
 
 		RespondWithJSON(w, http.StatusOK, response{User: User{
@@ -127,7 +140,8 @@ func (cfg *ApiConfig) HandleUserLogin(w http.ResponseWriter, r *http.Request) {
 			Updated_at: user.UpdatedAt,
 			Email:      user.Email,
 		},
-			Token: token,
+			Token:        token,
+			RefreshToken: createdRefreshToken.Token,
 		})
 	} else {
 		RespondWithError(w, 401, "401 Unauthorized", nil)
