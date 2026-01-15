@@ -83,14 +83,10 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 }
 
 func MakeRefreshToken() (string, error) {
-	key := make([]byte, 256)
 
-	refreshToken, err := rand.Read(key)
-	if err != nil {
-		return "", err
-	}
+	refreshToken := rand.Text()
 
-	src := make([]byte, refreshToken)
+	src := []byte(string(refreshToken))
 
 	return hex.EncodeToString(src), nil
 }

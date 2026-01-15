@@ -50,6 +50,7 @@ func main() {
 	serverMux.HandleFunc("POST /api/chirps", apiCfg.CreateChirpy)
 	serverMux.HandleFunc("GET /api/chirps", apiCfg.GetChirps)
 	serverMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.GetChirpsByID)
+	serverMux.HandleFunc("GET /api/refresh", apiCfg.GetChirpsByID)
 
 	srv := http.Server{
 		Addr:    ":" + port,
