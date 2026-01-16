@@ -10,4 +10,4 @@ VALUES (
 RETURNING *;
 
 -- name: GetRefreshToken :one
-SELECT * FROM refresh_token WHERE user_id=$1;
+SELECT * FROM refresh_token WHERE token=$1;
